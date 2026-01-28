@@ -1,0 +1,60 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 1024
+
+  # Enrichment: standardize resource attributes
+  attributes/enrich:
+    actions:
+      - key: deployment.platform
+        value: docker-compose
+        action: upsert
+
+  # MVP sampling at collector (optional; keep simple)
+  probabilistic_sampler:
+    sampling_percentage: 100
+
+exporters:
+  # Metrics: expose /metrics for Prometheus to scrape
+  prometheus:
+    endpoint: 0.0.0.0:9464
+
+  # Logs to Loki
+  loki:
+    endpoint: http://loki:3100/loki/api/v1/push
+
+  # Traces to Tempo via OTLP
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [attributes/enrich, probabilistic_sampler, batch]
+      exporters: [otlp/tempo]
+
+    metrics:
+      receivers: [otlp]
+      processors: [attributes/enrich, batch]
+      exporters: [prometheus]
+
+    logs:
+      receivers: [otlp]
+      processors: [attributes/enrich, batch]
+      exporters: [loki]

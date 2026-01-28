@@ -1,0 +1,16 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+    cmd = "go build -buildvcs=false -o ./tmp/control-plane-api ./cmd/server"
+    bin = "./tmp/control-plane-api"
+    delay = 500
+    stop_on_error = true
+
+    # Watch
+    include_ext = ["go", "mod", "sum", "json"]
+    include_dir = ["./", "../../libs/schemas"]
+    exclude_dir = ["tmp", "vendor",".git"]
+
+[log]
+    time = true

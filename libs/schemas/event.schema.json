@@ -1,0 +1,84 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "deep-observer://schemas/event.schema.json",
+    "title": "DeepObserverOperationalEvent",
+    "type": "object",
+    "required": ["schema_version", "id", "event_type", "service_name", "environment", "occurred_at", "title"],
+    "properties": {
+        "schema_version":{
+            "type": "string",
+            "description": "Schema version for forward compatibility.",
+            "pattern": "^[0-9]+\\.[0-9]+$",
+            "default": "1.0"
+        },
+        "id": {
+            "type": "string",
+            "description": "Client-generated UUID for idempotency.",
+            "format": "uuid"
+        },
+        "event_type": {
+            "type": "string",
+            "description": "Operational event category.",
+            "enum": ["deployment", "incident", "config_change", "maintenance"]
+        },
+        "service_name": {
+            "type": "string",
+            "minLength": 1
+        },
+        "environment": {
+            "type": "string",
+            "description": "Deployment environment (e.g, dev/staging/prod).",
+            "minLength": 1
+        },
+        "occurred_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Event occurence time ISO8601/RFC3339."
+        },
+        "end_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Optional end time for duration-based events (maintenance/incidents)."
+        },
+        "title": {
+            "type": "string",
+            "minLength": 1
+        },
+        "version": {
+            "type": "string",
+            "description": "Deployed version (for deployment events)."
+        },
+        "commit_hash": {
+            "type": "string",
+            "description": "Commit identifier (for deployment events)."
+        },
+        "actor": {
+            "type": "string",
+            "description": "Who triggered the event (user/system)."
+        },
+        "severity": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "critical"],
+            "description": "Optional severity for incident/config events"
+        },
+        "metadata": {
+            "type": "object",
+            "description": "Extensible key/value metada. Keep values short strings.",
+            "additionalProperties": {
+                "type": ["string", "number", "boolean"]
+            }
+        }
+    },
+    "allOf": [
+        {
+            "if": { "properties": { "event_type": { "const": "deployment"} } },
+            "then": {
+                "required": ["version"],
+                "properties": {
+                    "version": { "minLength": 1 }
+                }
+            }
+        }
+    ],
+    "additionalProperties": false
+}

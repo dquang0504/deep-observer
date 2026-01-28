@@ -1,0 +1,54 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "deep-observer://schemas/log.schema.json",
+    "title": "DeepObserverStructuredLog",
+    "type": "object",
+    "required": ["timestamp", "severity", "message", "service", "environment", "trace_id"],
+    "properties": {
+        "timestamp": { "type": "string", "format": "date-time" },
+        "severity": { "type": "string", "enum": ["DEBUG", "INFO", "WARN", "ERROR"] },
+        "message": {"type": "string"},
+        "service": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+                "name": {"type": "string", "minLength": 1},
+                "version": { "type": "string"}
+            },
+            "additionalProperties": false
+        },
+        "environment": { "type": "string", "minLength": 1},
+        "trace_id": { "type": "string", "pattern": "^[0-9a-f]{32}$|^[0-9a-f]{16}$"},
+        "span_id": { "type": "string", "pattern": "^[0-9a-f]{16}$"},
+
+        "request_id": {"type": "string"},
+        "duration_ms": { "type": "number", "minimum": 0},
+
+        "http": {
+            "type": "object",
+            "properties": {
+                "method": { "type": "string"},
+                "route": { "type": "string"},
+                "status_code": {"type": "integer"}
+            },
+            "additionalProperties": true
+        },
+
+        "error": {
+            "type": "object",
+            "properties": {
+                "type": { "type": "string"},
+                "message": { "type": "string"},
+                "stack": { "type": "string"}
+            },
+            "additionalProperties": true
+        },
+
+        "labels": {
+            "type": "object",
+            "description": "Low-cardinality labels only. Avoid user_id/order_id here.",
+            "additionalProperties": { "type": "string"}
+        }
+    },
+    "additionalProperties": true
+}

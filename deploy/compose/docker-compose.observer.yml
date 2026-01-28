@@ -1,0 +1,51 @@
+name: deep-observer
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: deep-observer-postgres
+    environment:
+      POSTGRES_USER: deepobserver
+      POSTGRES_PASSWORD: deepobserver
+      POSTGRES_DB : deepobserver
+    ports:
+      - "5432:5432"
+    volumes:
+      - deep_observer_pgdata:/var/lib/postgresql/data
+      # init scripts: migration + seed
+      - ./init-db:/docker-entrypoint-initdb.d:ro
+    networks:
+      - deep_observer_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U deepobserver -d deepobserver"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  control-plane-api:
+    build:
+      context: ../../services/control-plane-api
+      dockerfile: Dockerfile.dev
+    container_name: deep-observer-control-plane-api
+    environment:
+      #pgx DSN
+      DATABASE_URL: postgres://deepobserver:deepobserver@postgres:5432/deepobserver?sslmode=disable
+      REPO_ROOT: /workspace/deep-observer
+      GIN_MODE: release
+    ports:
+      - "8090:8090"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Mount monorepo (read-only) so the service can load libs/schemas/*.json
+    volumes:
+      - ../../..:/workspace
+    networks:
+      - deep_observer_net
+
+networks:
+  deep_observer_net:
+    name: deep_observer_net
+
+volumes:
+  deep_observer_pgdata:

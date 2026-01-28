@@ -1,0 +1,8 @@
+FROM golang:1.25 AS dev
+
+WORKDIR /workspace/deep-observer/services/control-plane-api
+
+RUN go install github.com/air-verse/air@latest
+
+EXPOSE 8090
+CMD ["air", "-c", ".air.toml"]
