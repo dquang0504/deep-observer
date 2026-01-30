@@ -3,30 +3,40 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/dquang0504/deep-observer/control-plane-api/internal/db/repo"
 	"github.com/dquang0504/deep-observer/control-plane-api/internal/helper"
+	"github.com/dquang0504/deep-observer/control-plane-api/internal/model"
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type ServicesHandler struct {pool *pgxpool.Pool}
-func NewServicesHandler(pool *pgxpool.Pool) *ServicesHandler {return &ServicesHandler{pool: pool}}
+type ServicesHandler struct {
+	repo *repo.ServicesRepo
+}
+func NewServicesHandler(repo *repo.ServicesRepo) *ServicesHandler {return &ServicesHandler{repo: repo}}
 
 func (h *ServicesHandler) ListServices(c *gin.Context){
-	rows, err := h.pool.Query(c.Request.Context(), `SELECT service_name, language, owner, created_at FROM services ORDER BY service_name`)
+	rows, err := h.repo.List(c.Request.Context())
 	if err != nil{ 
 		helper.RespondError(c,500,"db_query_failed",err.Error())
+		return
 	}
-	defer rows.Close()
+	c.JSON(http.StatusOK, gin.H{"items": rows})
+}
 
-	out := make([]gin.H, 0)
-	for rows.Next(){
-		var name, lang, owner *string
-		var createdAt any
-		if err := rows.Scan(&name, &lang, &owner, &createdAt); err != nil{
-			helper.RespondError(c,500,"db_scan_failed",err.Error())
-			return;
-		}
-		out = append(out, gin.H{"service_name": name, "language": lang, "owner": owner, "created_at": createdAt})
+//Todo: is the method c.ShouldBindJSON the same as json.Unmarshal ? If not, what is the difference?
+
+func (h *ServicesHandler) CreateService(c *gin.Context){
+	var req model.CreateServiceRequest
+	if err := c.ShouldBindJSON(&req); err != nil{
+		helper.RespondError(c, 400, "invalid_request", err.Error())
+		return
 	}
-	c.JSON(http.StatusOK, gin.H{"items": out})
+
+	service, err := h.repo.Create(c.Request.Context(), req)
+	if err != nil{
+		helper.RespondError(c, 500, "db_insert_failed", err.Error())
+		return
+	}
+
+	c.JSON(http.StatusCreated, service)
 }
