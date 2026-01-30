@@ -23,7 +23,8 @@ func NewRouter(d Deps) *gin.Engine{
 		v1.PUT("/events/:id", d.EventsHandler.PutEvent)
 
 		v1.GET("/services", d.ServicesHandler.ListServices)
-    	v1.GET("/environments", d.EnvironmentsHandler.ListEnvironments)
+		v1.POST("/services", d.ServicesHandler.CreateService)
+		v1.GET("/environments", d.EnvironmentsHandler.ListEnvironments)
 	}
 
 	r.GET("/healthz", func(c *gin.Context) {c.JSON(200, gin.H{"ok": true})})
