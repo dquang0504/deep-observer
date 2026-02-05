@@ -12,28 +12,29 @@ import (
 type ServicesHandler struct {
 	repo *repo.ServicesRepo
 }
-func NewServicesHandler(repo *repo.ServicesRepo) *ServicesHandler {return &ServicesHandler{repo: repo}}
 
-func (h *ServicesHandler) ListServices(c *gin.Context){
+func NewServicesHandler(repo *repo.ServicesRepo) *ServicesHandler {
+	return &ServicesHandler{repo: repo}
+}
+
+func (h *ServicesHandler) ListServices(c *gin.Context) {
 	rows, err := h.repo.List(c.Request.Context())
-	if err != nil{ 
-		helper.RespondError(c,500,"db_query_failed",err.Error())
+	if err != nil {
+		helper.RespondError(c, 500, "db_query_failed", err.Error())
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"items": rows})
 }
 
-//Todo: is the method c.ShouldBindJSON the same as json.Unmarshal ? If not, what is the difference?
-
-func (h *ServicesHandler) CreateService(c *gin.Context){
+func (h *ServicesHandler) CreateService(c *gin.Context) {
 	var req model.CreateServiceRequest
-	if err := c.ShouldBindJSON(&req); err != nil{
+	if err := c.ShouldBindJSON(&req); err != nil {
 		helper.RespondError(c, 400, "invalid_request", err.Error())
 		return
 	}
 
 	service, err := h.repo.Create(c.Request.Context(), req)
-	if err != nil{
+	if err != nil {
 		helper.RespondError(c, 500, "db_insert_failed", err.Error())
 		return
 	}

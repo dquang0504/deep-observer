@@ -7,12 +7,11 @@ services:
     environment:
       POSTGRES_USER: deepobserver
       POSTGRES_PASSWORD: deepobserver
-      POSTGRES_DB : deepobserver
+      POSTGRES_DB: deepobserver
     ports:
       - "5432:5432"
     volumes:
       - deep_observer_pgdata:/var/lib/postgresql/data
-      # init scripts: migration + seed
       - ./init-db:/docker-entrypoint-initdb.d:ro
     networks:
       - deep_observer_net
@@ -22,13 +21,30 @@ services:
       timeout: 3s
       retries: 20
 
+  grafana:
+    image: grafana/grafana:latest
+    container_name: deep-observer-grafana
+    volumes:
+      - ../../configs/grafana/provisioning:/etc/grafana/provisioning
+      - ../../configs/grafana/dashboards-json:/var/lib/grafana/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    ports:
+      - "3000:3000"
+    networks:
+      - deep_observer_net
+    depends_on:
+      - postgres
+      - prometheus
+      - loki
+      - tempo
+
   control-plane-api:
     build:
       context: ../../services/control-plane-api
       dockerfile: Dockerfile.dev
     container_name: deep-observer-control-plane-api
     environment:
-      #pgx DSN
       DATABASE_URL: postgres://deepobserver:deepobserver@postgres:5432/deepobserver?sslmode=disable
       REPO_ROOT: /workspace/deep-observer
       GIN_MODE: release
@@ -37,11 +53,67 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    # Mount monorepo (read-only) so the service can load libs/schemas/*.json
     volumes:
       - ../../..:/workspace
     networks:
       - deep_observer_net
+
+  # --- Observability Stack ---
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: deep-observer-prometheus
+    volumes:
+      - ../../configs/prometheus/prometheus.yaml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    ports:
+      - "9090:9090"
+    networks:
+      - deep_observer_net
+
+  loki:
+    image: grafana/loki:latest
+    container_name: deep-observer-loki
+    volumes:
+      - ../../configs/loki/loki-config.yml:/etc/loki/local-config.yaml
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+    networks:
+      - deep_observer_net
+
+  tempo:
+    image: grafana/tempo:2.9.1
+    container_name: deep-observer-tempo
+    command: [ "-target=all", "-config.file=/etc/tempo.yaml" ]
+
+    volumes:
+      - ../../configs/tempo/tempo.yml:/etc/tempo.yaml
+    ports:
+      - "3200:3200"
+      - "4317" # otlp grpc internal
+      - "7946:7946"
+      - "7946:7946/udp"
+    networks:
+      - deep_observer_net
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: deep-observer-otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ../../configs/otel-collector/collector.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317" # otlp grpc for apps
+      - "4318:4318" # otlp http for apps
+      - "9464:9464" # prometheus exporter
+    networks:
+      - deep_observer_net
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
 
 networks:
   deep_observer_net:

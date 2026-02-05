@@ -10,6 +10,7 @@ type Deps struct{
 	EventsHandler *handlers.EventsHandler
 	ServicesHandler *handlers.ServicesHandler
   	EnvironmentsHandler *handlers.EnvironmentsHandler
+	DashboardsHandler *handlers.DashboardsHandler
 }
 
 func NewRouter(d Deps) *gin.Engine{
@@ -25,6 +26,9 @@ func NewRouter(d Deps) *gin.Engine{
 		v1.GET("/services", d.ServicesHandler.ListServices)
 		v1.POST("/services", d.ServicesHandler.CreateService)
 		v1.GET("/environments", d.EnvironmentsHandler.ListEnvironments)
+		
+		v1.GET("/dashboards", d.DashboardsHandler.ListDashboards)
+		v1.POST("/dashboards", d.DashboardsHandler.CreateDashboard)
 	}
 
 	r.GET("/healthz", func(c *gin.Context) {c.JSON(200, gin.H{"ok": true})})
