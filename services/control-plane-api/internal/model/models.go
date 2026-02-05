@@ -34,4 +34,3 @@ type CreateDashboardRequest struct{
 	Description string `json:"description"`
 	GrafanaUUID string `json:"grafana_uuid" binding:"required"`
 }
-
