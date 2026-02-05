@@ -1,3 +1,7 @@
 go 1.25.1
 
-use ./services/control-plane-api
+use (
+	./apps/sample-service
+	./libs/deep-observer-go
+	./services/control-plane-api
+)

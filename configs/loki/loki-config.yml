@@ -1,0 +1,35 @@
+auth_enabled: false  # Disable authentication for local MVP development
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /tmp/loki      # Base path for Loki's temporary data
+  storage:
+    filesystem:
+      chunks_directory: /tmp/loki/chunks  # Where compressed log chunks are stored
+      rules_directory: /tmp/loki/rules    # Where alerting rules are stored
+  replication_factor: 1       # Run as a single node, no data replication needed
+  ring:
+    kvstore:
+      store: inmemory         # Store cluster state in RAM (fast, non-persistent)
+
+# Schema Config: Defines how Loki indexes logs over time
+schema_config:
+  configs:
+    - from: 2020-10-24
+      store: tsdb             # Use TSDB (Time Series DB) for faster indexing and queries
+      object_store: filesystem # Store data on the local disk
+      schema: v13             # Schema version
+      index:
+        prefix: index_
+        period: 24h           # Create a new index file every 24 hours
+
+# Limits Config: Allow modern features
+limits_config:
+  allow_structured_metadata: true # Allow logs to have structured metadata (e.g., traceID)
+  volume_enabled: true
+  reject_old_samples: true
+  reject_old_samples_max_age: 168h # Reject logs older than 1 week (168h)

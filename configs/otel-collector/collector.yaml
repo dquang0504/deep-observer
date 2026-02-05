@@ -1,3 +1,4 @@
+# 1. Receivers: Entry points for data (Logs, Metrics, Traces)
 receivers:
   otlp:
     protocols:
@@ -6,41 +7,45 @@ receivers:
       http:
         endpoint: 0.0.0.0:4318
 
+# 2. Processors: Modify/Enrich data before sending
 processors:
   batch:
-    timeout: 5s
+    timeout: 5s              # Batch data for 5 seconds to reduce network calls
     send_batch_size: 1024
 
-  # Enrichment: standardize resource attributes
-  attributes/enrich:
+  attributes/enrich:         # Add "deployment.platform=docker-compose" to all telemetry
     actions:
       - key: deployment.platform
         value: docker-compose
         action: upsert
 
-  # MVP sampling at collector (optional; keep simple)
-  probabilistic_sampler:
+  probabilistic_sampler:     # Sample 100% of traces (for MVP/Debugging)
     sampling_percentage: 100
 
+# 3. Exporters: Where to send the processed data
 exporters:
-  # Metrics: expose /metrics for Prometheus to scrape
   prometheus:
-    endpoint: 0.0.0.0:9464
+    endpoint: 0.0.0.0:9464   # Expose metrics for Prometheus to scrape
 
-  # Logs to Loki
-  loki:
-    endpoint: http://loki:3100/loki/api/v1/push
+  # Send Logs to Loki via OTLP over HTTP
+  # Note: The 'otlphttp' exporter is used because the 'loki' exporter is deprecated/removed in new versions
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+    tls:
+      insecure: true
 
-  # Traces to Tempo via OTLP
+  # Send Traces to Tempo via OTLP (gRPC default)
   otlp/tempo:
     endpoint: tempo:4317
     tls:
       insecure: true
 
+# 4. Extensions: Helper components
 extensions:
   health_check:
     endpoint: 0.0.0.0:13133
 
+# 5. Service: Define the pipelines (connect Receivers -> Processors -> Exporters)
 service:
   extensions: [health_check]
   pipelines:
@@ -57,4 +62,4 @@ service:
     logs:
       receivers: [otlp]
       processors: [attributes/enrich, batch]
-      exporters: [loki]
+      exporters: [otlphttp/loki] # Forward logs to Loki
